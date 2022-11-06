@@ -25,3 +25,40 @@ scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
 
+## Problem 1
+
+## Problem 2
+```{r raw}
+homicides_df = read_csv("./data/homicide-data.csv")
+
+```
+
+### Describe the raw data
+
+In the `homicides_df` dataset, there are `r nrow(homicides_df)` observations and `r ncol(homicides_df)` variables. The variables in this dataset include `r colnames(homicides_df)`. 
+
+
+```{r}
+homicides_new = homicides_df %>% 
+  janitor::clean_names() %>% 
+  mutate(city_state = str_c(city, state, sep = "_"),
+         status = 
+           case_when(disposition == "Closed without arrest" ~ "unresolved",
+                     disposition == "Open/No arrest" ~ "unresolved",
+                     disposition == "Closed by arrest" ~ "resolved")) 
+
+summarize_df = homicides_new %>% 
+  group_by(city_state) %>% 
+  summarize(total = n(),
+            unresolved = sum(status == "unresolved"))
+```
+
+### Using `prop.test` for Baltimore, MD
+```{r}
+prop.test(summarize_df %>% filter(city_state == "Baltimore_MD") %>%
+            pull(unresolved), 
+          summarize_df %>% filter(city_state == "Baltimore_MD") %>%
+            pull(total)) %>% 
+  broom::tidy()
+```
+
