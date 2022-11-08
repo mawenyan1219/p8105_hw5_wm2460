@@ -30,7 +30,6 @@ scale_fill_discrete = scale_fill_viridis_d
 ## Problem 2
 ```{r raw}
 homicides_df = read_csv("./data/homicide-data.csv")
-
 ```
 
 #### Describe the raw data
@@ -42,14 +41,14 @@ homicides_new = homicides_df %>%
   janitor::clean_names() %>% 
   mutate(city_state = str_c(city, state, sep = "_"),
          status = 
-           case_when(disposition == "Closed without arrest" ~ "unresolved",
-                     disposition == "Open/No arrest" ~ "unresolved",
+           case_when(disposition == "Closed without arrest" ~ "unsolved",
+                     disposition == "Open/No arrest" ~ "unsolved",
                      disposition == "Closed by arrest" ~ "resolved")) 
 
 summarize_df = homicides_new %>% 
   group_by(city_state) %>% 
   summarize(total = n(),
-            unresolved = sum(status == "unresolved")) 
+            unsolved = sum(status == "unsolved")) 
 
 summarize_df
 ```
@@ -57,14 +56,14 @@ summarize_df
 #### Using `prop.test` for Baltimore, MD
 ```{r baltimore}
 prop.test(summarize_df %>% filter(city_state == "Baltimore_MD") %>%
-            pull(unresolved), 
+            pull(unsolved), 
           summarize_df %>% filter(city_state == "Baltimore_MD") %>%
             pull(total)) %>% 
   broom::tidy()
 
 # save the output of prop.test as an R object
 prop.test(summarize_df %>% filter(city_state == "Baltimore_MD") %>%
-            pull(unresolved), 
+            pull(unsolved), 
           summarize_df %>% filter(city_state == "Baltimore_MD") %>%
             pull(total)) %>% 
   broom::tidy() %>% 
@@ -73,9 +72,8 @@ prop.test(summarize_df %>% filter(city_state == "Baltimore_MD") %>%
 
 #### Using `prop.test` for each cities
 ```{r all_cities}
-all_cities = 
-  summarize_df %>% 
-  mutate(prop_tests = map2(.x = unresolved, .y = total, ~ prop.test(x = .x, n = .y)),
+all_cities = summarize_df %>% 
+  mutate(prop_tests = map2(.x = unsolved, .y = total, ~ prop.test(x = .x, n = .y)),
          tidy_df = map(.x = prop_tests, ~ broom::tidy(.x))) %>% 
   select(-prop_tests) %>% 
   unnest(tidy_df) %>% 
@@ -98,5 +96,31 @@ all_cities_plot
 
 
 ## Problem 3
+
+#### Set up the simulation
+```{r simulation}
+sim_p3 = function(n = 30, mu = 0, sigma = 5) {
+     x = rnorm(n, mean = mu, sd = sigma)
+     t_test = t.test(x, conf.int = 0.95) %>% broom::tidy()
+     
+     t_test
+}
+
+p3_df = vector("list", 1000)
+
+for (i in 1:1000) {
+  p3_df[[i]] = sim_p3()
+}
+
+p3_df %>% 
+  bind_rows() %>% 
+  head()
+```
+
+
+
+
+
+
 
 
