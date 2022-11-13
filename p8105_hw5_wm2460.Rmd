@@ -137,7 +137,6 @@ sim_2 = function(set){
   
 }
 
-
 test_power =
   tibble(mus = c(0, 1, 2, 3, 4, 5, 6),
          reject_time = map(mus, sim_2)) %>%  
@@ -158,5 +157,69 @@ power_plot
 ```
 
 From the plot, we can see clearly that the power of the test increase as the true value of μ increase. Therefore, as the effect size (i.e., the true value of μ) increase, power increases. 
+
+#### A plot showing the average estimate of μ^ and the true value of μ 
+```{r average_plot}
+sim_3 = function(n = 30, mu = 0, sigma = 5) {
+     sim_data = tibble(x = rnorm(n, mean = mu, sd = sigma),)
+     
+     sim_t_test = t.test(pull(sim_data,x), conf.int = 0.95) %>% 
+              broom::tidy() %>% 
+              janitor::clean_names() %>% 
+              select( p_value)
+     
+     sim_data %>% 
+     summarize(mu_hat_all = mean(x),
+               mu_hat_rej = case_when(
+                 pull(sim_t_test, p_value) < 0.05 ~ mean(x),
+                 pull(sim_t_test, p_value) >= 0.05 ~ as.numeric("")))
+}
+
+sim_4 = function(set){
+  mu_hat = vector("list", 1000)
+  for (i in 1:1000) {
+     mu_hat[[i]] = sim_3(mu = set)
+     }
+  
+  mu_hat %>% 
+    bind_rows() %>% 
+    summarize(all = mean(mu_hat_all, na.rm = TRUE),
+              reject = mean(mu_hat_rej, na.rm = TRUE))
+}
+
+average_muhat =
+  tibble(true_mu = c(0, 1, 2, 3, 4, 5, 6),
+         muhat = map(true_mu, sim_4)) %>%  
+  unnest(muhat) %>% 
+  pivot_longer(all:reject,
+               names_to = "samples",
+               values_to = "average")
+
+all_plot = average_muhat %>% 
+  filter(samples == "all") %>% 
+  ggplot(aes(x = true_mu, y = average)) +
+  geom_point(size = 2) +
+  geom_line()
+
+all_plot
+
+reject_plot = average_muhat %>% 
+  filter(samples == "reject") %>% 
+  ggplot(aes(x = true_mu, y = average)) +
+  geom_point(size = 2) +
+  geom_line()
+
+reject_plot
+
+together_plot = average_muhat %>% 
+  ggplot(aes(x = true_mu, y = average, group = samples)) +
+  geom_point(aes(color = samples), size = 2) +
+  geom_line(alpha = 0.5)
+
+together_plot
+```
+
+
+When the true mu is less than 4, the sample average of μ^ across tests for which the null is rejected is not approximately equal to the true value of μ. However, if the true mu is 4, 5, or 6, the sample average of μ^ across tests for which the null is rejected is approximately equal to the true value of μ. 
 
 
