@@ -66,14 +66,12 @@ tidy_df %>%
 
 This plot suggests high within-subject correlation -- subjects who start above average end up above average, and those that start below average end up below average. Subjects in the control group generally don't change over time, but those in the experiment group increase their outcome in a roughly linear way. 
 
-
 ## Problem 2
 ```{r raw}
 homicides_df = read_csv("./data/homicide-data.csv")
 ```
 
 #### Describe the raw data
-
 In the `homicides_df` dataset, there are `r nrow(homicides_df)` observations and `r ncol(homicides_df)` variables. The variables in this dataset include `r colnames(homicides_df)`. 
 
 ```{r summarize}
@@ -134,11 +132,12 @@ all_cities_plot = all_cities %>%
 all_cities_plot
 ```
 
-
 ## Problem 3
 
 #### Set up the simulation
 ```{r sim_1}
+# Start with a function that generate t-test results with fixed n and sigma
+
 sim_1 = function(n = 30, mu = 0, sigma = 5) {
      x = rnorm(n, mean = mu, sd = sigma)
      t_test = t.test(x, conf.int = 0.95) %>% broom::tidy()
@@ -146,9 +145,9 @@ sim_1 = function(n = 30, mu = 0, sigma = 5) {
      t_test
 }
 
-p3_df = vector("list", 1000)
+p3_df = vector("list", 5000)
 
-for (i in 1:1000) {
+for (i in 1:5000) {
   p3_df[[i]] = sim_1()
 }
 
@@ -159,10 +158,12 @@ p3_df %>%
 
 #### Simulation for different mu
 ```{r sim_2}
+# A second function to apply for-loop and calculate power
+
 sim_2 = function(set){
   
-  p3_df = vector("list", 1000)
-  for (i in 1:1000) {
+  p3_df = vector("list", 5000)
+  for (i in 1:5000) {
      p3_df[[i]] = sim_1(mu = set)
   }
   
@@ -182,7 +183,7 @@ test_power =
   tibble(mus = c(0, 1, 2, 3, 4, 5, 6),
          reject_time = map(mus, sim_2)) %>%  
   unnest(reject_time) %>% 
-  mutate(power = n/1000)
+  mutate(power = n/5000)
 ```
 
 #### A plot between the power of the test and the true value of μ
@@ -201,13 +202,15 @@ From the plot, we can see clearly that the power of the test increase as the tru
 
 #### A plot showing the average estimate of μ^ and the true value of μ 
 ```{r average_plot}
+# A third function to apply t-test and learn about when null was rejected
+
 sim_3 = function(n = 30, mu = 0, sigma = 5) {
      sim_data = tibble(x = rnorm(n, mean = mu, sd = sigma),)
      
      sim_t_test = t.test(pull(sim_data,x), conf.int = 0.95) %>% 
               broom::tidy() %>% 
               janitor::clean_names() %>% 
-              select( p_value)
+              select(p_value)
      
      sim_data %>% 
      summarize(mu_hat_all = mean(x),
@@ -216,9 +219,11 @@ sim_3 = function(n = 30, mu = 0, sigma = 5) {
                  pull(sim_t_test, p_value) >= 0.05 ~ as.numeric("")))
 }
 
+# A forth function that apply sim_3 to the list and to summarize
+
 sim_4 = function(set){
-  mu_hat = vector("list", 1000)
-  for (i in 1:1000) {
+  mu_hat = vector("list", 5000)
+  for (i in 1:5000) {
      mu_hat[[i]] = sim_3(mu = set)
      }
   
@@ -240,7 +245,9 @@ all_plot = average_muhat %>%
   filter(samples == "all") %>% 
   ggplot(aes(x = true_mu, y = average)) +
   geom_point(size = 2) +
-  geom_line()
+  geom_line() +
+  labs(x = "True value of μ",
+       y = "Average estimate of μ^ of all sample")
 
 all_plot
 
@@ -248,19 +255,24 @@ reject_plot = average_muhat %>%
   filter(samples == "reject") %>% 
   ggplot(aes(x = true_mu, y = average)) +
   geom_point(size = 2) +
-  geom_line()
+  geom_line() +
+  labs(x = "True value of μ",
+       y = "Average estimate of μ^ of rejected null sample")
 
 reject_plot
 
 together_plot = average_muhat %>% 
   ggplot(aes(x = true_mu, y = average, group = samples)) +
   geom_point(aes(color = samples), size = 2) +
-  geom_line(alpha = 0.5)
+  geom_line(alpha = 0.5) +
+  labs(x = "True value of μ",
+       y = "Average estimate of μ^",
+       title = "Comparing average estimate of μ^ by all sample and rejected null sample")
 
 together_plot
 ```
 
+When the true μ is less than 4 and larger than 0, the sample average of μ^ across tests for which the null is rejected is not approximately equal to the true value of μ. However, if the true μ is 4, 5, or 6, the sample average of μ^ across tests for which the null is rejected is approximately equal to the true value of μ. 
 
-When the true mu is less than 4, the sample average of μ^ across tests for which the null is rejected is not approximately equal to the true value of μ. However, if the true mu is 4, 5, or 6, the sample average of μ^ across tests for which the null is rejected is approximately equal to the true value of μ. 
 
-
+## End of HW5
